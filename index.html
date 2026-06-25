@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Palette Generator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 60px 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 0.95rem;
+      margin-bottom: 40px;
+    }
+
+    /* ── Input area ── */
+    .input-group {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 14px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #1a1a1a;
+      border: 1px solid #2e2e2e;
+      border-radius: 10px;
+      color: #f0f0f0;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #555; }
+
+    button {
+      padding: 14px 22px;
+      background: #f0f0f0;
+      color: #0f0f0f;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .hints {
+      font-size: 0.78rem;
+      color: #555;
+      margin-bottom: 40px;
+    }
+
+    .hints span {
+      display: inline-block;
+      background: #1c1c1c;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 3px 9px;
+      margin: 2px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .hints span:hover { border-color: #555; color: #ccc; }
+
+    /* ── Result card ── */
+    #result {
+      width: 100%;
+      max-width: 480px;
+      display: none;
+    }
+
+    .card {
+      background: #161616;
+      border: 1px solid #242424;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 22px 14px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    .card-header .theme-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .card-header .theme-name {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    /* ── Swatches ── */
+    .swatches {
+      display: flex;
+      height: 120px;
+    }
+
+    .swatch {
+      flex: 1;
+      position: relative;
+      cursor: pointer;
+      transition: flex 0.3s ease;
+    }
+
+    .swatch:hover { flex: 2; }
+
+    .swatch-label {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+      background: rgba(0,0,0,0.5);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .swatch:hover .swatch-label { opacity: 1; }
+
+    /* ── Tip ── */
+    .tip {
+      padding: 16px 22px;
+      font-size: 0.85rem;
+      color: #777;
+      border-top: 1px solid #1e1e1e;
+    }
+
+    /* ── Copied toast ── */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #f0f0f0;
+      color: #0f0f0f;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Error ── */
+    .error {
+      background: #1a0a0a;
+      border: 1px solid #3a1010;
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: #f87171;
+      font-size: 0.88rem;
+      display: none;
+    }
+
+    /* ── Loading ── */
+    .loading {
+      color: #555;
+      font-size: 0.9rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1> Palette Generator</h1>
+  <p class="subtitle">Type a mood → FastAPI picks colors → you copy &amp; ship</p>
+
+  <div class="input-group">
+    <input id="moodInput" type="text" placeholder="e.g. calm, energy, dark..." />
+    <button id="generateBtn" onclick="generate()">Generate</button>
+  </div>
+
+  <div class="hints">
+    Try: 
+    <span onclick="quickFill('calm')">calm</span>
+    <span onclick="quickFill('energy')">energy</span>
+    <span onclick="quickFill('nature')">nature</span>
+    <span onclick="quickFill('dark')">dark</span>
+    <span onclick="quickFill('warm')">warm</span>
+  </div>
+
+  <p class="loading" id="loading">Fetching palette...</p>
+  <div class="error" id="error"></div>
+
+  <div id="result">
+    <div class="card">
+      <div class="card-header">
+        <div class="theme-label">Theme</div>
+        <div class="theme-name" id="themeName">—</div>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied!</div>
+
+  <script>
+    const API = "http://localhost:8000";  // ← FastAPI backend URL
+
+    function quickFill(mood) {
+      document.getElementById("moodInput").value = mood;
+      generate();
+    }
+
+    async function generate() {
+      const mood = document.getElementById("moodInput").value.trim();
+      if (!mood) return;
+
+      // UI state: loading
+      document.getElementById("result").style.display = "none";
+      document.getElementById("error").style.display = "none";
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("generateBtn").disabled = true;
+
+      try {
+        // ── THE INTEGRATION HAPPENS HERE ──
+        // Frontend sends a POST request to FastAPI with the mood
+        const response = await fetch(`${API}/palette`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mood })
+        });
+
+        if (!response.ok) throw new Error("Server error");
+
+        // FastAPI returns JSON → we parse and render it
+        const data = await response.json();
+        renderPalette(data);
+
+      } catch (err) {
+        const errEl = document.getElementById("error");
+        errEl.textContent = "Couldn't reach the backend. Is FastAPI running on port 8000?";
+        errEl.style.display = "block";
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("generateBtn").disabled = false;
+      }
+    }
+
+    function renderPalette({ theme, colors, tip }) {
+      document.getElementById("themeName").textContent = theme;
+      document.getElementById("tip").textContent = tip;
+
+      const container = document.getElementById("swatches");
+      container.innerHTML = colors.map(hex => `
+        <div class="swatch" style="background:${hex}" onclick="copyHex('${hex}')">
+          <span class="swatch-label">${hex}</span>
+        </div>
+      `).join("");
+
+      document.getElementById("result").style.display = "block";
+    }
+
+    function copyHex(hex) {
+      navigator.clipboard.writeText(hex);
+      const toast = document.getElementById("toast");
+      toast.textContent = `Copied ${hex}`;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    // Generate on Enter key
+    document.getElementById("moodInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") generate();
+    });
+  </script>
+</body>
+</html>
